@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1196</width>
+    <height>711</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ImageQt</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../res/default.qrc">
+    <normaloff>:/img/logo_2.png</normaloff>:/img/logo_2.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <item>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="GraphicsView" name="leftGraphicsView" native="true"/>
+        </item>
+        <item>
+         <widget class="GraphicsView" name="rightGraphicsView" native="true"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1196</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>文件(&amp;F)</string>
+    </property>
+    <addaction name="actionOpen"/>
+    <addaction name="actionClose"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionSave_As"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>编辑</string>
+    </property>
+    <addaction name="actionRestore"/>
+    <addaction name="actionHistogram"/>
+    <addaction name="actionGrayscale"/>
+    <addaction name="actionAdjust_brightness"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>帮助</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuGrey_Transfrom">
+    <property name="title">
+     <string>灰色变换(&amp;G)</string>
+    </property>
+    <addaction name="actionLinear_level_transformation"/>
+    <addaction name="actionPower_transformation"/>
+    <addaction name="actionLogarithm_grey_level_transformation"/>
+    <addaction name="actionExp_transfrom"/>
+    <addaction name="actionTwo_thresholds_transform"/>
+    <addaction name="actionStretch_transformation"/>
+    <addaction name="separator"/>
+    <addaction name="actionBinaryzation"/>
+   </widget>
+   <widget class="QMenu" name="menuGeometric">
+    <property name="title">
+     <string>几何变换</string>
+    </property>
+    <widget class="QMenu" name="menuFlip">
+     <property name="title">
+      <string>翻转
+</string>
+     </property>
+     <addaction name="actionHorizontal"/>
+     <addaction name="actionVertical"/>
+    </widget>
+    <addaction name="zoomAction"/>
+    <addaction name="actionRotate"/>
+    <addaction name="menuFlip"/>
+   </widget>
+   <widget class="QMenu" name="menuArtistic_Effect">
+    <property name="title">
+     <string>艺术效果</string>
+    </property>
+    <widget class="QMenu" name="menuFrame">
+     <property name="title">
+      <string>相框</string>
+     </property>
+     <addaction name="actionMovie_frame"/>
+     <addaction name="actionClassic_frame"/>
+     <addaction name="actionFlower_frame"/>
+    </widget>
+    <widget class="QMenu" name="menuTexture">
+     <property name="title">
+      <string>纹理</string>
+     </property>
+     <addaction name="actionMetal"/>
+    </widget>
+    <widget class="QMenu" name="menuTemperature">
+     <property name="title">
+      <string>色温</string>
+     </property>
+     <property name="icon">
+      <iconset>
+       <normaloff>:/img/src/temperature_72px.png</normaloff>:/img/src/temperature_72px.png</iconset>
+     </property>
+     <addaction name="actionCool"/>
+     <addaction name="actionWarm"/>
+    </widget>
+    <addaction name="menuFrame"/>
+    <addaction name="menuTexture"/>
+    <addaction name="menuTemperature"/>
+   </widget>
+   <widget class="QMenu" name="menuBlur">
+    <property name="title">
+     <string>模糊与锐化</string>
+    </property>
+    <addaction name="actionSimple"/>
+    <addaction name="actionGauss"/>
+    <addaction name="separator"/>
+    <addaction name="actionMeida_Filter"/>
+    <addaction name="separator"/>
+    <addaction name="actionLaplace"/>
+   </widget>
+   <widget class="QMenu" name="menuContour_extraction">
+    <property name="title">
+     <string>轮廓提取</string>
+    </property>
+    <addaction name="actionContour_extraction"/>
+    <addaction name="actionEdge_following"/>
+    <addaction name="separator"/>
+    <addaction name="actionPrewitt"/>
+    <addaction name="actionSobel"/>
+   </widget>
+   <widget class="QMenu" name="menuMorphology">
+    <property name="title">
+     <string>形态学</string>
+    </property>
+    <addaction name="actionDilate"/>
+    <addaction name="actionExpansion"/>
+    <addaction name="actionOpening"/>
+    <addaction name="actionClosing"/>
+    <addaction name="actionThinning"/>
+   </widget>
+   <widget class="QMenu" name="menu">
+    <property name="title">
+     <string>标定</string>
+    </property>
+    <addaction name="actioncaliFrom3Pts"/>
+   </widget>
+   <widget class="QMenu" name="menu_2">
+    <property name="title">
+     <string>测量</string>
+    </property>
+    <addaction name="actiondistancePP"/>
+    <addaction name="actionmeasureFrom3Pts"/>
+    <addaction name="actionrect1Area"/>
+    <addaction name="actionpolyArea"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuArtistic_Effect"/>
+   <addaction name="menuBlur"/>
+   <addaction name="menuGeometric"/>
+   <addaction name="menuGrey_Transfrom"/>
+   <addaction name="menuContour_extraction"/>
+   <addaction name="menuMorphology"/>
+   <addaction name="menu"/>
+   <addaction name="menu_2"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+  </widget>
+  <action name="actionOpen">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/open.svg</normaloff>:/img/open.svg</iconset>
+   </property>
+   <property name="text">
+    <string>打开(&amp;O)</string>
+   </property>
+   <property name="toolTip">
+    <string>打开一张图片</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionClose">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/clear.svg</normaloff>:/img/clear.svg</iconset>
+   </property>
+   <property name="text">
+    <string>关闭图片</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/save.svg</normaloff>:/img/save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>保存(&amp;S)</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionSave_As">
+   <property name="text">
+    <string>另存为</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>退出</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/about.svg</normaloff>:/img/about.svg</iconset>
+   </property>
+   <property name="text">
+    <string>关于</string>
+   </property>
+  </action>
+  <action name="actionNormal">
+   <property name="text">
+    <string>Normal</string>
+   </property>
+  </action>
+  <action name="actionAdjust">
+   <property name="text">
+    <string>Adjust</string>
+   </property>
+  </action>
+  <action name="actionRestore">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/restore.png</normaloff>:/img/restore.png</iconset>
+   </property>
+   <property name="text">
+    <string>恢复</string>
+   </property>
+  </action>
+  <action name="actionLeft">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/left.png</normaloff>:/img/src/left.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Left</string>
+   </property>
+  </action>
+  <action name="zoomAction">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/zoom.png</normaloff>:/img/src/zoom.png</iconset>
+   </property>
+   <property name="text">
+    <string>缩放</string>
+   </property>
+  </action>
+  <action name="actionGrayscale">
+   <property name="text">
+    <string>灰度图像</string>
+   </property>
+  </action>
+  <action name="actionWarm">
+   <property name="text">
+    <string>&amp;Warm</string>
+   </property>
+  </action>
+  <action name="actionCool">
+   <property name="text">
+    <string>&amp;Cool</string>
+   </property>
+  </action>
+  <action name="actionMovie_frame">
+   <property name="text">
+    <string>电影</string>
+   </property>
+  </action>
+  <action name="actionClassic_frame">
+   <property name="text">
+    <string>经典</string>
+   </property>
+  </action>
+  <action name="actionFlower_frame">
+   <property name="text">
+    <string>小花</string>
+   </property>
+  </action>
+  <action name="actionMetal">
+   <property name="text">
+    <string>金属</string>
+   </property>
+  </action>
+  <action name="actionAdjust_brightness">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/brightness.svg</normaloff>:/img/brightness.svg</iconset>
+   </property>
+   <property name="text">
+    <string>亮度</string>
+   </property>
+  </action>
+  <action name="actionHorizontal">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/horizontal.png</normaloff>:/img/src/horizontal.png</iconset>
+   </property>
+   <property name="text">
+    <string>水平</string>
+   </property>
+  </action>
+  <action name="actionVertical">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/vertical.png</normaloff>:/img/src/vertical.png</iconset>
+   </property>
+   <property name="text">
+    <string>垂直</string>
+   </property>
+  </action>
+  <action name="actionHistogram">
+   <property name="icon">
+    <iconset resource="../res/default.qrc">
+     <normaloff>:/img/histogram.png</normaloff>:/img/histogram.png</iconset>
+   </property>
+   <property name="text">
+    <string>直方图</string>
+   </property>
+  </action>
+  <action name="actionLinear_level_transformation">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/line_graphic_72p.png</normaloff>:/img/src/line_graphic_72p.png</iconset>
+   </property>
+   <property name="text">
+    <string>线性变换</string>
+   </property>
+  </action>
+  <action name="actionLogarithm_grey_level_transformation">
+   <property name="text">
+    <string>对数变换</string>
+   </property>
+  </action>
+  <action name="actionPower_transformation">
+   <property name="text">
+    <string>幂次变换</string>
+   </property>
+  </action>
+  <action name="actionExp_transfrom">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/Line_Chart_72px.png</normaloff>:/img/src/Line_Chart_72px.png</iconset>
+   </property>
+   <property name="text">
+    <string>指数变换</string>
+   </property>
+  </action>
+  <action name="actionTwo_thresholds_transform">
+   <property name="text">
+    <string>双阈值变换</string>
+   </property>
+  </action>
+  <action name="actionStretch_transformation">
+   <property name="text">
+    <string>拉伸变换</string>
+   </property>
+  </action>
+  <action name="actionSimple">
+   <property name="text">
+    <string>简单模糊</string>
+   </property>
+  </action>
+  <action name="actionGauss">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/img/src/blur_on_72px.png</normaloff>:/img/src/blur_on_72px.png</iconset>
+   </property>
+   <property name="text">
+    <string>高斯模糊</string>
+   </property>
+  </action>
+  <action name="actionMeida_Filter">
+   <property name="text">
+    <string>中值滤波</string>
+   </property>
+  </action>
+  <action name="actionLaplace">
+   <property name="text">
+    <string>拉普拉斯锐化</string>
+   </property>
+  </action>
+  <action name="actionSobel">
+   <property name="text">
+    <string>Sobel 边缘检测</string>
+   </property>
+  </action>
+  <action name="actionBinaryzation">
+   <property name="text">
+    <string>二值化</string>
+   </property>
+  </action>
+  <action name="actionPrewitt">
+   <property name="text">
+    <string>Prewitt 边缘检测</string>
+   </property>
+  </action>
+  <action name="actionContour_extraction">
+   <property name="text">
+    <string>轮廓提取</string>
+   </property>
+  </action>
+  <action name="actionEdge_following">
+   <property name="text">
+    <string>边缘跟踪</string>
+   </property>
+  </action>
+  <action name="actionArea">
+   <property name="text">
+    <string>Area</string>
+   </property>
+  </action>
+  <action name="actionCircumference">
+   <property name="text">
+    <string>Circumference</string>
+   </property>
+  </action>
+  <action name="actionDilate">
+   <property name="text">
+    <string>腐蚀</string>
+   </property>
+  </action>
+  <action name="actionExpansion">
+   <property name="text">
+    <string>膨胀</string>
+   </property>
+  </action>
+  <action name="actionOpening">
+   <property name="text">
+    <string>开运算</string>
+   </property>
+  </action>
+  <action name="actionClosing">
+   <property name="text">
+    <string>闭运算</string>
+   </property>
+  </action>
+  <action name="actionThinning">
+   <property name="text">
+    <string>细化处理</string>
+   </property>
+  </action>
+  <action name="actionEqualization">
+   <property name="text">
+    <string>Equalization</string>
+   </property>
+  </action>
+  <action name="actionRotate">
+   <property name="text">
+    <string>旋转</string>
+   </property>
+  </action>
+  <action name="actioncaliFrom3Pts">
+   <property name="text">
+    <string>3点标定</string>
+   </property>
+  </action>
+  <action name="actionmeasureFrom3Pts">
+   <property name="text">
+    <string>三点测量</string>
+   </property>
+  </action>
+  <action name="actionrect1Area">
+   <property name="text">
+    <string>坐标矩形面积</string>
+   </property>
+  </action>
+  <action name="actionpolyArea">
+   <property name="text">
+    <string>凸多边形面积</string>
+   </property>
+  </action>
+  <action name="actiondistancePP">
+   <property name="text">
+    <string>两点距离</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicsView</class>
+   <extends>QWidget</extends>
+   <header>graphicsview.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../res/default.qrc"/>
+ </resources>
+ <connections/>
+</ui>
