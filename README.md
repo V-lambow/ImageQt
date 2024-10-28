@@ -1,10 +1,6 @@
 # ImageQt
 
-Image viewer powered by Qt 5.8.0
 
-[QPhoto](https://github.com/seahime/QPhoto)是该项目的重制版，当前完成度还很低。
-
-> 友情提示：该项目为作者本科时的课程作业，代码比较乱，参考需慎重。
 
 
 ## 功能（按完成时间排序）
