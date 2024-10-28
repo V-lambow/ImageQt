@@ -1,8 +1,8 @@
 ﻿#include "tools.h"
 #include "medianfilter.h"
 
-#define min2(a,b) (a)<(b)?(a):(a)
-#define min(a,b,c) (min2(a,b))<(c)?(min2(a,b)):(c)
+#define min2(a,b) (a)<(b)?(a):(b)
+#define min3(a,b,c) min2(min2(a,b),c)
 
 
 /*****************************************************************************
@@ -1039,27 +1039,30 @@ QImage Tools::Thinning(const QImage &origin){
     return imgCopyed;
 }
 ///直线绘制
-std::tuple<QImage,double> Tools::PaintLine(const QImage &origin,QLineF line,QPen pen){
+std::tuple<QImage,double> Tools::PaintLine(const QImage &origin,QLineF line,const double& reslouton,QPainter* painter,QPen pen){
 
         QImage imgCopyed(origin);
-        QPainter painter(&imgCopyed);
-        painter.setPen(pen);
-        painter.drawLine(line);
-        painter.setRenderHints(QPainter::Antialiasing);
+        painter->begin(&imgCopyed);
+        painter->setPen(pen);
+        painter->drawLine(line);
+        painter->setRenderHints(QPainter::Antialiasing);
         double len =line.length();
 
         pen=QPen(Qt::blue, 4);
-        painter.setPen(pen);
-        painter.drawText(Tools::midPoint(line.p1(),line.p2()).toPoint(),QString::number(len)+"(pixiv)");
+        painter->setPen(pen);
+        painter->drawText(Tools::midPoint(line.p1(),line.p2()).toPoint(),QString::number(len*reslouton)+"(um)");
+        painter->end();
+
         return std::make_tuple(imgCopyed,len);
 }
-std::tuple<QImage,double> Tools::PaintLineAPt(const QImage &origin,QLineF line,QPointF pt,QPen pen){
+std::tuple<QImage,double> Tools::PaintLineAPt(const QImage &origin,QLineF line,QPointF pt,const double& reslouton,QString str,QPainter* painter,QPen pen){
 
     QImage imgCopyed(origin);
-    QPainter painter(&imgCopyed);
-    painter.setPen(pen);
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.drawLine(line);
+     pen.setStyle(Qt::DotLine);
+    painter->begin(&imgCopyed);
+    painter->setPen(pen);
+    painter->setRenderHints(QPainter::Antialiasing);
+    painter->drawLine(line);
 
 
     float k =(line.y2()-line.y1())*1.0/(line.x2()-line.x1());
@@ -1072,45 +1075,75 @@ std::tuple<QImage,double> Tools::PaintLineAPt(const QImage &origin,QLineF line,Q
 //            pow((line.x2()-line.x1()),2)+pow(line.y2()-line.y1(),2);
 //    painter.drawLine(QPointF(line.x1()+k*(line.x2()-line.x1()),line.y1()+k*(line.y2()-line.y1())),pt);
 
-    pen=QPen(Qt::green, 4);
-    pen.setStyle(Qt::DotLine);
+    pen=QPen(Qt::green, 1);
+    pen.setStyle(Qt::SolidLine);
 
-    painter.setPen(pen);
-    painter.drawLine(pFoot,pt);
+    painter->setPen(pen);
+    painter->drawLine(pFoot,pt);
     double len =QLineF(pFoot,pt).length();
 
     pen=QPen(Qt::blue, 4);
-    painter.setPen(pen);
-    painter.drawText(Tools::midPoint(pFoot,pt).toPoint(),QString::number(len)+"(pixiv)");
+    painter->setPen(pen);
+    double lenReal=0.0;
+    if(str=="calibration"){
+        lenReal = reslouton;
+    }
+    else{
+        lenReal = len*reslouton;
+    }
+    painter->drawText(Tools::midPoint(pFoot,pt).toPoint(),QString::number(lenReal)+"(um)");
+    painter->end();
     return std::make_tuple(imgCopyed,len);
 
 }
-std::tuple<QImage,int> Tools::PaintRect1(const QImage &origin,QPointF ptbg,QPointF ptend,QPen pen){
+std::tuple<QImage,double> Tools::PaintRect1(const QImage &origin,QPointF ptbg,QPointF ptend,const double& reslouton,QPainter* painter,QPen pen){
 
     QImage imgCopyed(origin);
-    QPainter painter(&imgCopyed);
-    painter.setPen(pen);
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.drawRect(QRect(ptbg.toPoint(),ptend.toPoint()));
+    painter->begin(&imgCopyed);
+    painter->setPen(pen);
+    painter->setRenderHints(QPainter::Antialiasing);
+    painter->drawRect(QRect(ptbg.toPoint(),ptend.toPoint()));
     int Area =QRect(ptbg.toPoint(),ptend.toPoint()).height()*QRect(ptbg.toPoint(),ptend.toPoint()).width();
     pen=QPen(Qt::blue, 4);
-    painter.setPen(pen);
-    painter.drawText(Tools::midPoint(ptbg,ptend).toPoint(),QString::number(Area)+"(pixiv²)");
+    painter->setPen(pen);
+    painter->drawText(Tools::midPoint(ptbg,ptend).toPoint(),QString::number(Area*pow(reslouton,2))+"(um²)");
 
-    return std::make_tuple(imgCopyed,Area);
+    painter->end();
+    return std::make_tuple(imgCopyed,Area*pow(reslouton,2));
 }
-std::tuple<QImage,double>  Tools::PaintPoly(const QImage &origin,const QVector<QPointF>pts,QPen pen){
+std::tuple<QImage,double>  Tools::PaintPoly(const QImage &origin,const QVector<QPointF>pts,const double& reslouton,QPainter* painter,QPen pen){
 
     QImage imgCopyed(origin);
-    QPainter painter(&imgCopyed);
-    painter.setPen(pen);
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.drawPolygon(pts);
+    painter->begin(&imgCopyed);
+    painter->setPen(pen);
+    painter->setRenderHints(QPainter::Antialiasing);
+    painter->drawPolygon(pts);
     double Area= Tools::calculatePolygonArea(pts);
     pen=QPen(Qt::blue, 4);
-    painter.setPen(pen);
-    painter.drawText(Tools::midPoint(pts.at(0),pts.at(1)).toPoint(),QString::number(Area)+"(pixiv²)");
-    return std::make_tuple(imgCopyed,Area);
+    painter->setPen(pen);
+    painter->drawText(Tools::midPoint(pts.at(0),pts.at(1)).toPoint(),QString::number(Area*pow(reslouton,2))+"(um²)");
+    painter->end();
+
+    return std::make_tuple(imgCopyed,Area*pow(reslouton,2));
+
+}
+
+std::tuple<QImage,double>  Tools::PaintAngle(const QImage &origin,const QVector<QPointF>pts,QPainter* painter,QPen pen){
+
+    QImage imgCopyed(origin);
+
+    painter->begin(&imgCopyed);
+    painter->setPen(pen);
+    painter->setRenderHints(QPainter::Antialiasing);
+    painter->drawLine(pts.at(0),pts.at(1));
+    painter->drawLine(pts.at(1),pts.at(2));
+    double angle = Tools::pts3toAngle(pts);
+    pen=QPen(Qt::blue, 4);
+    painter->setPen(pen);
+    painter->drawText(Tools::midPoint(pts.at(0),pts.at(1)).toPoint(),QString::number(angle)+"(°)");
+    painter->end();
+
+    return std::make_tuple(imgCopyed,angle);
 
 }
 
@@ -1147,6 +1180,47 @@ double Tools::calculatePolygonArea(const QVector<QPointF> &points) {
     return qAbs(area) / 2.0;  // 返回绝对值除以2
 }
 
+
+///3点角度求解
+double Tools::pts3toAngle(const QVector<QPointF>& points) {
+    if (points.size() != 3) {
+          throw std::runtime_error("Input must contain exactly 3 points.");  // 使用异常处理来提示错误
+      }
+
+      QPointF A = points[0];
+      QPointF B = points[1];
+      QPointF C = points[2];
+
+      // 计算向量 BA 和 BC
+      QPointF BA = B - A;
+      QPointF BC = B - C;
+
+      // 计算长度
+      double lengthBA = std::sqrt(BA.x() * BA.x() + BA.y() * BA.y());
+      double lengthBC = std::sqrt(BC.x() * BC.x() + BC.y() * BC.y());
+
+      // 检查向量长度是否为零
+      if (lengthBA == 0.0 || lengthBC == 0.0) {
+          return 0; // 如果任一向量的长度为0，返回0度
+      }
+
+      // 计算点积
+      double dotProduct = BA.x() * BC.x() + BA.y() * BC.y();
+
+      // 计算余弦值
+      double cosTheta = dotProduct / (lengthBA * lengthBC);
+
+      // 限制cosTheta在-1到1之间以防浮点误差
+
+      cosTheta =fmin(1.0, std::max(-1.0, cosTheta));
+
+      // 计算夹角（弧度转化为度）
+      double angleRad = std::acos(cosTheta);
+      double angleDeg = angleRad * (180.0 / M_PI);
+
+      return angleDeg;
+
+}
 
 
 

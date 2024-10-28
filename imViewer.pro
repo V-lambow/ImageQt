@@ -7,6 +7,16 @@
 TEMPLATE = subdirs
 
 SUBDIRS += src
+CONFIG += c++17 \
+    qt \
+    qt \
+    qt \
+    qt
+#QMAKE_CXXFLAGS += -std=c++17
+#QMAKE_CXXFLAGS += -finput-charset=UTF-8
+CODECFORSRC = UTF-8
+QMAKE_CXXFLAGS += -execution-charset:utf-8
+QMAKE_CXXFLAGS += -source-charset:utf-8
 
 
 #QT       += core gui concurrent
@@ -75,3 +85,14 @@ SUBDIRS += src
 #TRANSLATIONS += cn.ts
 
 #DISTFILES +=
+
+HEADERS += \
+    src/mainwindow/graphicsitem.h \
+    src/utils/graphicsitem.h
+
+SOURCES += \
+    src/mainwindow/graphicsitem.cpp \
+    src/mainwindow/mygraphicsitem.cpp \
+    src/utils/graphicsitem.cpp
+
+QT += widgets

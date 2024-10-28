@@ -12,7 +12,10 @@
 #include <QStandardPaths>
 #include <QTranslator>
 #include <QMessageBox>
+#include <QDebug>
+#include <QScrollBar>
 #include "graphicsview.h"
+#include "limitedDqe.hpp"
 #include "../dialog/dialog_gaussianblur.h"
 #include "../utils/tools.h"
 #include "../utils/histogram.h"
@@ -26,6 +29,24 @@
 #include "../dialog/dialog_stretch_transform.h"
 #include "../dialog/dialog_califrom3pts.h"
 #include "../dialog/dialog_ptsnumrecord.h"
+//#include "../dialog/dlg_hkcamconnect.h"
+#include "../dialog/dlg_sethkspecinfo.h"
+#include "../t_grabimg.h"
+#include "../dialog/dlg_resolutionmanager.h"
+#include "../utils/ImageSaver.hpp"
+#include "../dialog/dlg_imgleap.h"
+#include "../dialog/dlg_imagenamed.h"
+#include "../mainwindow/mygraphicspixmapitem.h"
+
+///海康
+///
+#include "MvCameraControl.h"
+#include <stdio.h>
+#include <Windows.h>
+#include <conio.h>
+#include <process.h>
+///
+
 
 #define WINDOW_TITLE    "ImageQt"
 #define WINDOW_CRITICAL "Error - ImageQt"
@@ -45,11 +66,14 @@ public:
     ~MainWindow();
 
     void updateRightImage(QPixmap &pixmap);
-    void cleanImage();
+    void cleanImage(QString whichSide);
 
     void setActionStatus(bool);
+    void setHKcamActionStatus(bool);
     void createToolBar();
     void createAction();
+    void setDrawActionStatus(bool);
+
 
 private slots:
 
@@ -146,28 +170,100 @@ private slots:
     void  on_actionrect1Area_triggered();
     void  on_actionpolyArea_triggered();
     void on_actiondistancePP_triggered();
+    void  on_action3ptsMsAngle_triggered();
+    /********************************
+     * **************************/
+//    void on_actionconnect_triggered();
+    void on_actionstopGrab_triggered();
+    void on_actiondisconnect_triggered();
+    void on_actionopenDevice_triggered();
+    //__stdcall
+//    inline static unsigned int __stdcall WorkThread(void* pUser);
+    void updateLeftFromCam(QImage image,const QString& str);
+    void on_actionsetSpecInfo_triggered();
+    void on_actioncapture_triggered();
+    void setPara2Cam(float fexposure,float fgain,unsigned int nred,unsigned int ngreen,unsigned int nblue,\
+                     bool exposureMode,bool gainMode,bool balanceMode);
+///todo
+//    void updateLeftGraphicsView(const QImage &image);
+//    void getPara2Dlg();
 
+
+
+    void on_actionresolutionManage_triggered();
+
+    void on_actionpicBefore_triggered();
+
+    void on_actionpicNext_triggered();
+
+
+    void on_actionimageLeap_triggered();
+
+
+    void on_actioneraserLast_triggered();
 
 private:
     QAction *finalEx;
 
-    Ui::MainWindow  *ui;
-    QGraphicsScene  *leftScene;
-    QGraphicsScene  *rightScene;
+    Ui::MainWindow       *ui;
+    QGraphicsScene       *leftScene;
+    QGraphicsScene       *rightScene;
+
+    //dzy1025
     QGraphicsPixmapItem* leftPixmapItem;
-    QGraphicsPixmapItem* rightPixmapItem;
+    MyGraphicsPixmapItem* rightPixmapItem;
 
     QLabel          *size;
+    std::unique_ptr<QLabel> curResolutionName=std::make_unique<QLabel>();
 
-    QFileInfo *info;
 
-    double resolution=0.0;
+    QFileInfo       *info;
 
-    ///画图状态位
-//    inline static bool drawStatus=false;
+    ///当前分辨率
+    double curReslution=0.0;
+    ///分辨率列表
+    std::shared_ptr<std::map<QString,double>> resolution=std::make_shared<std::map<QString,double>>();
+    ///画家
+    QPainter painter;
+    ///图片缓存（用于撤回上一步）
+    QImage ImgTmp;
+    LimitedDqe<QImage> ImgDqe{10};
+
+    ImageSaver savedImage;
+    int savedShowIdx=savedImage.getImageCount()-1;
+    //  double resolution=0.0;
+
+    /********************/
+    ///海康
+    void *  HkHandle = nullptr;
+    uint16_t nRet =MV_OK;
+    MV_CC_DEVICE_INFO *stDevInfo = nullptr;
+    MV_GIGE_DEVICE_INFO *stGigEDev = nullptr;
+    bool hkStopFlg = true;
+    TgrabImg* grabImgThread=nullptr;
+
+
+    ///自动白平衡状态
+
+    std::shared_ptr<MVCC_ENUMVALUE>HKImgFmt = std::make_shared<MVCC_ENUMVALUE>();
+    std::unique_ptr<MVCC_ENUMVALUE>gainMode = std::make_unique<MVCC_ENUMVALUE>();
+    std::unique_ptr<MVCC_ENUMVALUE>exposureMode = std::make_unique<MVCC_ENUMVALUE>();
+    std::unique_ptr<MVCC_ENUMVALUE>balanceWH = std::make_unique<MVCC_ENUMVALUE>();
+
+    void  freeTgrabImg();
+
+//    MVCC_ENUMVALUE *gainMode =nullptr;
+//    MVCC_ENUMVALUE *exposureMode=nullptr;
+//    MVCC_ENUMVALUE *balanceWH=nullptr;
+
+    ///图像输出
+    MV_FRAME_OUT * stOutFrame=nullptr;
+
 
     QString getUserName();
     QString getUserPath();
+
+
 
 
 

@@ -20,8 +20,8 @@ QImage GaussianBlur::BlurImage(const QImage& in)
 
     QImage image(in.size(), in.format());
 
-    int matrixSize = mConvolutionMatrix.size();
-    int halfMatrixSize = matrixSize / 2;
+    size_t matrixSize = mConvolutionMatrix.size();
+    size_t halfMatrixSize = matrixSize / 2;
 
     float sumRed = 0.0f;
     float sumBlue = 0.0f;
@@ -33,7 +33,7 @@ QImage GaussianBlur::BlurImage(const QImage& in)
     {
         for (int y = 0; y < in.height(); ++y)
         {
-            for (int kx = -halfMatrixSize; kx <= halfMatrixSize; ++kx)
+            for (size_t kx = -halfMatrixSize; kx <= halfMatrixSize; ++kx)
             {
                 x1 = ReflectIndex(x - kx, in.width());
 

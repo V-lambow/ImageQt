@@ -42,30 +42,56 @@ void getResPixelValueST(IndexPair &p)
     MedianFilter::mfStatic->getResPixelValue(p);
 }
 
+//void MedianFilter::getResPixelValue(IndexPair &p)
+//{
+//    int k = 0, workingWeight = originImageweight+2*radius;
+//    element window[windowSize];
+
+//    for (int i = p.i - radius; i < p.i + radius+1; i++)
+//    {
+//        for (int j = p.j - radius; j < p.j + radius + 1; j++)
+//            window[k++] = this->extensionImage[i * (workingWeight) + j];
+//    }
+
+//    for (int j = 0; j <= windowSizeHalf; j++)
+//    {
+//        int min = j;
+//        for (int l = j + 1; l < windowSize; l++)
+//            if (window[l] < window[min])
+//                min = l;
+//        const element el = window[j];
+//        window[j] = window[min];
+//        window[min] = el;
+//    }
+
+//    resImage[(p.i - radius) * originImageweight + (p.j - radius)] = window[windowSizeHalf];
+//}
+
+
+
 void MedianFilter::getResPixelValue(IndexPair &p)
 {
-    int k = 0, workingWeight = originImageweight+2*radius;
-    element window[windowSize];
+    int workingWeight = this->originImageweight + 2 * this->radius;
 
-    for (int i = p.i - radius; i < p.i + radius+1; i++)
+    // Dynamically allocate a vector for window
+    std::vector<element> window(this->windowSize);
+
+    int k = 0;
+    for (int i = p.i - this->radius; i <= p.i + this->radius; i++)
     {
-        for (int j = p.j - radius; j < p.j + radius + 1; j++)
-            window[k++] = this->extensionImage[i * (workingWeight) + j];
+        for (int j = p.j - this->radius; j <= p.j + this->radius; j++)
+        {
+            window[k++] = this->extensionImage[i * workingWeight + j];
+        }
     }
 
-    for (int j = 0; j <= windowSizeHalf; j++)
-    {
-        int min = j;
-        for (int l = j + 1; l < windowSize; l++)
-            if (window[l] < window[min])
-                min = l;
-        const element el = window[j];
-        window[j] = window[min];
-        window[min] = el;
-    }
+    // Sort the window elements to find the median
+    std::sort(window.begin(), window.end());
 
-    resImage[(p.i - radius) * originImageweight + (p.j - radius)] = window[windowSizeHalf];
+    // Store the median in the result image
+    resImage[(p.i - this->radius) * originImageweight + (p.j - this->radius)] = window[windowSize / 2];
 }
+
 
 void MedianFilter::applyMedianFilter(element *i, element *res, const int imageHeight, const int imageWidth, const int r)
 { 

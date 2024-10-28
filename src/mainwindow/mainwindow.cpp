@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QDebug>
-#include <QGraphicsPixmapItem>
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -14,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     rightScene = new QGraphicsScene;
 
     leftPixmapItem = new QGraphicsPixmapItem();
-    rightPixmapItem = new QGraphicsPixmapItem();
+    rightPixmapItem = new MyGraphicsPixmapItem();
 
     size = new QLabel;
 
@@ -26,6 +25,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->rightGraphicsView->setScene(rightScene);
 
     ui->statusBar->addPermanentWidget(size);
+    ui->statusBar->addPermanentWidget(this->curResolutionName.get());
+
     ///实时显示坐标
     QLabel *pixLabel=new QLabel("当前坐标:(X,Y)",this);
     ui->statusBar->addWidget(pixLabel);
@@ -33,6 +34,10 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->rightGraphicsView,&GraphicsView::mouseMoved,this,[pixLabel](const QPointF& pt){
         pixLabel->setText(QString("当前坐标:( %1 , %2 )").arg(pt.x()).arg(pt.y()));
     });
+
+
+
+
 
 
     createAction();
@@ -54,20 +59,53 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->rightGraphicsView,&GraphicsView::sg_polyArea,this,&MainWindow::on_actionpolyArea_triggered);
 
+    connect(ui->rightGraphicsView,&GraphicsView::sg_pts3MsAgl,this,&MainWindow::on_action3ptsMsAngle_triggered);
+
+
 
 
 }
 
+///工具栏
 void MainWindow::createToolBar()
 {
     ui->toolBar->addAction(ui->actionOpen);
+    ui->toolBar->addAction(ui->actionSave);
     ui->toolBar->addAction(ui->actionClose);
 
     ui->toolBar->addSeparator();
+
     ui->toolBar->addAction(ui->actionRestore);
     ui->toolBar->addAction(ui->actionHistogram);
 
     ui->toolBar->addSeparator();
+
+    ui->toolBar->addAction(ui->actionopenDevice);
+    ui->toolBar->addAction(ui->actionstopGrab);
+    ui->toolBar->addAction(ui->actiondisconnect);
+
+    ui->toolBar->addSeparator();
+    ui->toolBar->addSeparator();
+
+    ui->toolBar->addAction(ui->actioncapture);
+    ui->toolBar->addAction(ui->actionpicBefore);
+    ui->toolBar->addAction(ui->actionpicNext);
+    ui->toolBar->addAction(ui->actioneraserLast);
+    ui->toolBar->addAction(ui->actionimageLeap);
+
+    ui->toolBar->addSeparator();
+    ui->toolBar->addSeparator();
+
+    ui->toolBar->addAction(ui->actioncaliFrom3Pts);
+    ui->toolBar->addAction(ui->actionmeasureFrom3Pts);
+
+
+
+//    QWidget savedImgName= QWidget(this);
+//    ui->toolBar->addWidget(&savedImgName);
+//    savedImgName
+
+
 }
 
 void MainWindow::createAction()
@@ -93,13 +131,16 @@ MainWindow::~MainWindow()
         size = nullptr;
     }
 
-
     //add
     if (rightScene)
     {
         delete leftScene;
         leftScene = nullptr;
     }
+
+
+
+    freeTgrabImg();
 
 }
 
@@ -117,20 +158,38 @@ void MainWindow::updateRightImage(QPixmap &pixmap)
  *                      Clean image of both Scene
  *
  *****************************************************************************/
-void MainWindow::cleanImage()
+void MainWindow::cleanImage(QString whichSide)
 {
-    leftScene->clear();
-    ui->leftGraphicsView->resetTransform();
+    freeTgrabImg();
+    if(whichSide=="left"){
+        leftScene->clear();
+        leftPixmapItem=nullptr;
+        ui->leftGraphicsView->resetTransform();
+    }
+    else if(whichSide=="right"){
+        rightScene->clear();
+        rightPixmapItem=nullptr;
+        ui->rightGraphicsView->resetTransform();
+    }
+    else{
 
-    rightScene->clear();
-    ui->rightGraphicsView->resetTransform();
-
+        on_actiondisconnect_triggered();
+        leftScene->clear();
+        leftPixmapItem=nullptr;
+        ui->leftGraphicsView->resetTransform();
+        rightScene->clear();
+        rightPixmapItem=nullptr;
+        ui->rightGraphicsView->resetTransform();
+    }
 
     if (size)
     {
         delete size;
         size = new QLabel;
         ui->statusBar->addPermanentWidget(size);
+        std::unique_ptr<QLabel> curResolutionName=std::make_unique<QLabel>();
+
+        ui->statusBar->addPermanentWidget(curResolutionName.get());
     }
 
 
@@ -190,8 +249,31 @@ void MainWindow::setActionStatus(bool status)
     ui->actionRotate->setEnabled(status);
     ui->actionrect1Area->setEnabled(status);
     ui->actionpolyArea->setEnabled(status);
+    ui->action3ptsMsAngle->setEnabled(status);
+    ui->actiondistancePP->setEnabled(status);
+    ui->actionresolutionManage->setEnabled(status);
 }
 
+void MainWindow::setDrawActionStatus(bool status){
+    ui->action3ptsMsAngle->setEnabled(status);
+    ui->actiondistancePP->setEnabled(status);
+    ui->actioncaliFrom3Pts->setEnabled(status);
+    ui->actionmeasureFrom3Pts->setEnabled(status);
+    ui->actionpolyArea->setEnabled(status);
+    ui->actionrect1Area->setEnabled(status);
+}
+
+
+
+
+void MainWindow::setHKcamActionStatus(bool status){
+    ui->actionopenDevice->setEnabled(status);
+    ui->actionsetSpecInfo->setEnabled(status);
+    ui->actiondisconnect->setEnabled(status);
+    ui->actioncapture->setEnabled(status);
+    ui->actionstopGrab->setEnabled(status);
+
+}
 
 
 
@@ -305,12 +387,13 @@ void MainWindow::receiveStretchParamter(int x1, int x2,
  *****************************************************************************/
 void MainWindow::on_actionOpen_triggered()
 {
+    freeTgrabImg();
     // Automatically detects the current user's home directory
     // And then wait the user to select one image
     QString imagePath = QFileDialog::getOpenFileName(this, tr("Open image"), getUserPath() + "/Pictures",
                                                      tr("All Files (*);;"
-                                                        "All Images (*.bpm *.gif *.jpg *.jpeg *.png *.ppm *.xbm *.xpm);;"
-                                                        "Image BPM (*.bpm);;"
+                                                        "All Images (*.bmp *.gif *.jpg *.jpeg *.png *.ppm *.xbm *.xpm);;"
+                                                        "Image BPM (*.bmp);;"
                                                         "Image GIF (*.gif);;"
                                                         "Image JPG (*.jpg);;"
                                                         "Image JPEG (*.jpeg);;"
@@ -329,17 +412,21 @@ void MainWindow::on_actionOpen_triggered()
         }
 
         // delete previous image
-        cleanImage();
+//        cleanImage("both");
 
         // upload image
         info = new QFileInfo(imagePath);
 
         QPixmap leftPixmap(imagePath);
+
         leftPixmapItem = leftScene->addPixmap(leftPixmap);
         leftScene->setSceneRect(QRectF(leftPixmap.rect()));
 
         QPixmap rightPixmap(imagePath);
-        rightPixmapItem = rightScene->addPixmap(rightPixmap);
+        //dzy1025
+        rightPixmapItem=new MyGraphicsPixmapItem();
+        rightPixmapItem->setPixmap(rightPixmap);
+        rightScene->addItem(rightPixmapItem);
         rightScene->setSceneRect(QRectF(rightPixmap.rect()));
 
         // settings
@@ -349,6 +436,17 @@ void MainWindow::on_actionOpen_triggered()
 
         size->setText(QString::number(leftPixmapItem->pixmap().width())
                       + " x " + QString::number(leftPixmapItem->pixmap().height()));
+        QString name;
+        if(curReslution!=0.0){
+            std::for_each(this->resolution->begin(),this->resolution->end(),[this,&name](std::pair<QString,double> resolutionEle){
+                if(resolutionEle.second==curReslution){
+                    name=resolutionEle.first;
+                }
+            });
+        }
+        this->ImgDqe.clear();
+        this->curResolutionName.get()->setText("当前标定命名："+name);
+
     }
 }
 
@@ -358,12 +456,32 @@ void MainWindow::on_actionOpen_triggered()
  *****************************************************************************/
 void MainWindow::on_actionClose_triggered()
 {
+    do{
+    ///如果相机没有打开
+    if((this->nRet!=MV_OK) && (this->HkHandle==nullptr)){
+        QMessageBox::warning(this,"警告","请先打开相机"+QString::number(this->nRet), QMessageBox::Ok);
+        break;
+    }
+    ///相机打开则暂停
+    if(this->hkStopFlg==false){
+        on_actionstopGrab_triggered();
+    }
     ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
-    cleanImage();
+    cleanImage("both");
+    }while(0);
 }
 
 void MainWindow::on_actionSave_triggered()
 {
+
+
+    imageNamedDlg dlg(this);
+    connect(&dlg, &imageNamedDlg::sendData,[this](QString str){
+        this->savedImage.addImage(this->rightPixmapItem->pixmap().toImage(),str);
+        qDebug()<<"图像已保存";
+        this->savedShowIdx++;
+    });
+    dlg.exec();
 
 }
 
@@ -490,8 +608,6 @@ void MainWindow::on_actionAdjust_triggered()
     }
 
     ui->rightGraphicsView->scale(val,val);
-
-
 }
 
 
@@ -1010,18 +1126,18 @@ void MainWindow::on_actionClosing_triggered()
  * **************************************************************************/
 void MainWindow::on_actionThinning_triggered()
 {
-        QPixmap rightImage = rightPixmapItem->pixmap();
-        QImage imgTmp =Tools::GreyScale(rightImage.toImage());
-        imgTmp=imgTmp.convertToFormat(QImage::Format_Grayscale8);
-        if (imgTmp.isNull() || imgTmp.format() != QImage::Format_Grayscale8) {
-            QMessageBox::warning(this, "警告", + "The input image must be a non-null grayscale image.", QMessageBox::Ok);
-//            throw std::invalid_argument("The input image must be a non-null grayscale image.");
-            return;
-        }
-        QImage newImage = Tools::Thinning(imgTmp);
-        rightImage.convertFromImage(newImage);
+    QPixmap rightImage = rightPixmapItem->pixmap();
+    QImage imgTmp =Tools::GreyScale(rightImage.toImage());
+    imgTmp=imgTmp.convertToFormat(QImage::Format_Grayscale8);
+    if (imgTmp.isNull() || imgTmp.format() != QImage::Format_Grayscale8) {
+        QMessageBox::warning(this, "警告", + "The input image must be a non-null grayscale image.", QMessageBox::Ok);
+        //            throw std::invalid_argument("The input image must be a non-null grayscale image.");
+        return;
+    }
+    QImage newImage = Tools::Thinning(imgTmp);
+    rightImage.convertFromImage(newImage);
 
-        updateRightImage(rightImage);
+    updateRightImage(rightImage);
 
 }
 
@@ -1084,96 +1200,142 @@ void MainWindow::on_actionRotate_triggered()
 
 void  MainWindow::on_actioncaliFrom3Pts_triggered(){
 
-    ///初始化结果输出
-    if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
-        ui->rightGraphicsView->pts.clear();
-        ui->rightGraphicsView->figureChosed=GraphicsView::figure::CALI3PTS;
-    }
-    else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::CALI3PTS) && (ui->rightGraphicsView->pts.size()==3)){
-        QPixmap rightImage = rightPixmapItem->pixmap();
 
-        auto[newImage,lenPix]  = Tools::PaintLineAPt(rightImage.toImage(),\
-                QLineF(ui->rightGraphicsView->pts.at(0),ui->rightGraphicsView->pts.at(1)),\
-                ui->rightGraphicsView->pts.at(2));
-                rightImage.convertFromImage(newImage);
-                updateRightImage(rightImage);
-                double lenPixCopy=lenPix;
-                ///弹出dialog设置分辨率
-                CaliFrom3PtsDlg dialog;
-                connect(&dialog, &CaliFrom3PtsDlg::sendData, this, [this, lenPixCopy](double x) {
-            // 计算分辨率
-            this->resolution = x / lenPixCopy;
-            // 显示计算得到的实际距离
-            QMessageBox::information(this, "计算得到的实际距离（um）",
-                                     QString::number(x) + "(um)", QMessageBox::Ok);
+
+  ///初始化结果输出
+  if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+      ///第一次点击
+        setDrawActionStatus(false);
+        this->rightPixmapItem->grabMouse();
+
+//        this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+
+        this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+      ui->rightGraphicsView->pts.clear();
+      ui->rightGraphicsView->figureChosed=GraphicsView::figure::CALI3PTS;
+
+//      auto item =std::make_unique<Mygraphicsitem>();
+//      rightScene->addItem(item.get());
+//      auto item =new Mygraphicsitem();
+    }
+  else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::CALI3PTS) && \
+          (ui->rightGraphicsView->pts.size()==3)){
+      ///弹出dialog设置分辨率
+      QPixmap rightImage = rightPixmapItem->pixmap();
+      CaliFrom3PtsDlg dialog;
+      QString name ="";
+      connect(&dialog, &CaliFrom3PtsDlg::sendData, this, [this,&name](QString nameTmp,double x) {
+
+          // 显示计算得到的实际距离
+          QMessageBox::information(this, "计算得到的实际距离（um）",
+                                   QString::number(x) + "(um)", QMessageBox::Ok);
+          this->curReslution=x;
+          name=nameTmp;
+
         });
 
-        dialog.exec();
-        ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+      dialog.exec();
+      auto[newImage,lenPix]  = Tools::PaintLineAPt(rightImage.toImage(),\
+              QLineF(ui->rightGraphicsView->pts.at(0),\
+              ui->rightGraphicsView->pts.at(1)),\
+              ui->rightGraphicsView->pts.at(2),\
+              this->curReslution,\
+              "calibration",\
+              &this->painter);
+              rightImage.convertFromImage(newImage);
+              updateRightImage(rightImage);
+              this->curReslution/=lenPix;
+              this->resolution.get()->insert({name,this->curReslution});
+      ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+      setDrawActionStatus(true);
+      this->rightPixmapItem->ungrabMouse();
 
     }
-    else{
-        ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
-        return;
+  else{
+      ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+      return;
     }
+  QString name;
+  if(curReslution!=0.0){
+      std::for_each(this->resolution->begin(),this->resolution->end(),[this,&name](std::pair<QString,double> resolutionEle){
+          if(resolutionEle.second==curReslution){
+              name=resolutionEle.first;
+          }
+      });
+  }
+  this->curResolutionName.get()->setText("当前标定命名："+name);
 
-        //    while(pts.size()<3){
-        //        QMouseEvent *e = nullptr;
-        //        ui->leftGraphicsView->mousePressEvent(e);
-        //        if(ui->leftGraphicsView->pts.size()==3){
-        //            std::copy(ui->leftGraphicsView->pts.begin(),ui->leftGraphicsView->pts.end(),pts.begin());
-        //            break;
-        //        }
-        //    }
-        ///画图
-        //    QPainter painter;
+  //    while(pts.size()<3){
+  //        QMouseEvent *e = nullptr;
+  //        ui->leftGraphicsView->mousePressEvent(e);
+  //        if(ui->leftGraphicsView->pts.size()==3){
+  //            std::copy(ui->leftGraphicsView->pts.begin(),ui->leftGraphicsView->pts.end(),pts.begin());
+  //            break;
+  //        }
+  //    }
+  ///画图
+  //    QPainter painter;
 
-        //    QPointF scenePos1 = pts.at(0);
-        //    QPointF scenePos2 = pts.at(1);
-        //    painter.drawLine(scenePos1,scenePos2);
+  //    QPointF scenePos1 = pts.at(0);
+  //    QPointF scenePos2 = pts.at(1);
+  //    painter.drawLine(scenePos1,scenePos2);
 
-        //    QPointF scenePos3 = pts.at(2);
-        //    double k=(scenePos3.x()-scenePos1.x())*(scenePos2.x()-scenePos1.x())+\
-        //            (scenePos3.y()-scenePos1.y())*(scenePos2.y()-scenePos1.y())/\
-        //            pow((scenePos2.x()-scenePos1.x()),2)+pow(scenePos2.y()-scenePos1.y(),2);
-        //    painter.drawLine(QPointF(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3);
-        //    double len =QLineF(QPointF(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3).length();
-        //    painter.drawText(QRect(QPoint(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3.toPoint()),QString::number(len));
+  //    QPointF scenePos3 = pts.at(2);
+  //    double k=(scenePos3.x()-scenePos1.x())*(scenePos2.x()-scenePos1.x())+\
+  //            (scenePos3.y()-scenePos1.y())*(scenePos2.y()-scenePos1.y())/\
+  //            pow((scenePos2.x()-scenePos1.x()),2)+pow(scenePos2.y()-scenePos1.y(),2);
+  //    painter.drawLine(QPointF(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3);
+  //    double len =QLineF(QPointF(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3).length();
+  //    painter.drawText(QRect(QPoint(scenePos1.x()+k*(scenePos2.x()-scenePos1.x()),scenePos1.y()+k*(scenePos2.y()-scenePos1.y())),scenePos3.toPoint()),QString::number(len));
 
-        //    QPixmap rightImage = rightPixmapItem->pixmap();
-        //    QImage binaryImage = Tools::Binaryzation(rightImage.toImage());
-        //    QImage newImage = Tools::Opening(binaryImage);
-        //    rightImage.convertFromImage(newImage);
+  //    QPixmap rightImage = rightPixmapItem->pixmap();
+  //    QImage binaryImage = Tools::Binaryzation(rightImage.toImage());
+  //    QImage newImage = Tools::Opening(binaryImage);
+  //    rightImage.convertFromImage(newImage);
 
-        //    updateRightImage(rightImage);
-        //    ui->leftGraphicsView->ptNum=1;
-    }
+  //    updateRightImage(rightImage);
+  //    ui->leftGraphicsView->ptNum=1;
+}
 /************************************************************
  *                          两点距离
  * *************************************************************/
 void MainWindow::on_actiondistancePP_triggered(){
+
+
     ///初始化结果输出
+
     if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+            setDrawActionStatus(false);
+//            this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+            this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+
+
         ui->rightGraphicsView->pts.clear();
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::LINE;
     }
-    else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::LINE) && (ui->rightGraphicsView->pts.size()==2)){
+    else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::LINE) && \
+            (ui->rightGraphicsView->pts.size()==2)){
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
         QPixmap rightImage = rightPixmapItem->pixmap();
         auto[newImage,lenPix]  = Tools::PaintLine(rightImage.toImage(),\
-                QLineF(ui->rightGraphicsView->pts.at(0),ui->rightGraphicsView->pts.at(1)));
+                QLineF(ui->rightGraphicsView->pts.at(0),\
+                ui->rightGraphicsView->pts.at(1)),\
+                this->curReslution,
+                &this->painter);
                 rightImage.convertFromImage(newImage);
                 updateRightImage(rightImage);
-                double lenPixActual=lenPix*this->resolution;
-                if(lenPixActual==0){
+//                double lenPixActual=lenPix*this->curReslution;
+                if(lenPix==0){
             //没有进行过标定
             QMessageBox::information(this, "计算得到的实际距离（um）",
                                      "请先进行标定", QMessageBox::Ok);
         }
         else{
             QMessageBox::information(this, "计算得到的实际距离（um）",
-                                     QString::number(lenPixActual) + "(um)", QMessageBox::Ok);
+                                     QString::number(lenPix*this->curReslution) + "(um)", QMessageBox::Ok);
         }
+
+        setDrawActionStatus(true);
 
     }
     else{
@@ -1193,30 +1355,43 @@ void MainWindow::on_actiondistancePP_triggered(){
 ***************************************************************/
 void  MainWindow::on_actionmeasureFrom3Pts_triggered(){
 
+
     ///初始化结果输出
     if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+           setDrawActionStatus(false);
+           this->rightPixmapItem->grabMouse();
+
+//           this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+           this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+
+
         ui->rightGraphicsView->pts.clear();
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::MS3PTS;
     }
     else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::MS3PTS) && (ui->rightGraphicsView->pts.size()==3)){
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
         QPixmap rightImage = rightPixmapItem->pixmap();
-
         auto[newImage,lenPix]  = Tools::PaintLineAPt(rightImage.toImage(),\
-                QLineF(ui->rightGraphicsView->pts.at(0),ui->rightGraphicsView->pts.at(1)),\
-                ui->rightGraphicsView->pts.at(2));
+                QLineF(ui->rightGraphicsView->pts.at(0),\
+                ui->rightGraphicsView->pts.at(1)),\
+                ui->rightGraphicsView->pts.at(2),\
+                this->curReslution,
+                "",
+                &this->painter);
                 rightImage.convertFromImage(newImage);
                 updateRightImage(rightImage);
-                double lenPixActual=lenPix*this->resolution;
-                if(lenPixActual==0){
+   if(lenPix==0){
             //没有进行过标定
-            QMessageBox::information(this, "计算得到的实际距离（um）",
+            QMessageBox::information(this, "计算得到的实际距离（um）",\
                                      "请先进行标定", QMessageBox::Ok);
         }
         else{
             QMessageBox::information(this, "计算得到的实际距离（um）",
-                                     QString::number(lenPixActual) + "(um)", QMessageBox::Ok);
+                                     QString::number(lenPix*this->curReslution) + "(um)", QMessageBox::Ok);
         }
+        setDrawActionStatus(true);
+        this->rightPixmapItem->ungrabMouse();
+
 
     }
     else{
@@ -1232,25 +1407,38 @@ void  MainWindow::on_actionrect1Area_triggered(){
 
     ///初始化结果输出
     if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+        setDrawActionStatus(false);
+//        this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+        this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+
+
         ui->rightGraphicsView->pts.clear();
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::RECT1;
     }
     else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::RECT1) && (ui->rightGraphicsView->pts.size()==2)){
         QPixmap rightImage = rightPixmapItem->pixmap();
-        auto [newImage,AreaPix] =Tools::PaintRect1(rightImage.toImage(),ui->rightGraphicsView->pts.at(0),ui->rightGraphicsView->pts.at(1));
-                double AreaActual=AreaPix*pow(this->resolution,2);
+        auto [newImage,AreaPix] =Tools::PaintRect1(rightImage.toImage(),\
+                ui->rightGraphicsView->pts.at(0),\
+                ui->rightGraphicsView->pts.at(1),\
+                this->curReslution,\
+                &this->painter);
+//                double AreaActual=AreaPix*pow(this->curReslution,2);
                 rightImage.convertFromImage(newImage);
                 updateRightImage(rightImage);
-                if(AreaActual==0){
+                if(AreaPix==0){
             //没有进行过标定
-            QMessageBox::information(this, "计算得到的实际面积（um²）",
+            QMessageBox::information(this, "计算得到的面积（um²）",
                                      "请先进行标定", QMessageBox::Ok);
         }
         else{
-            QMessageBox::information(this, "计算得到的实际面积（um²）",
-                                     QString::number(AreaActual) + "(um²)", QMessageBox::Ok);
+            QMessageBox::information(this, "计算得到的面积（um²）",
+                                     QString::number(AreaPix) + "(um²)", QMessageBox::Ok);
         }
+        setDrawActionStatus(true);
+        ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+
     }
+
     else{
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
         return;
@@ -1264,6 +1452,12 @@ void  MainWindow::on_actionpolyArea_triggered(){
 
     ///初始化结果输出
     if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+        setDrawActionStatus(false);
+//        this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+        this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+
+
+
         ui->rightGraphicsView->pts.clear();
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POLY;
         ///弹出窗口记录多边形顶点数
@@ -1278,24 +1472,719 @@ void  MainWindow::on_actionpolyArea_triggered(){
     else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::POLY) && \
             (ui->rightGraphicsView->pts.size()==ui->rightGraphicsView->ptsNumRecord)){
         QPixmap rightImage = rightPixmapItem->pixmap();
-        auto [newImage,AreaPix] =Tools::PaintPoly(rightImage.toImage(),ui->rightGraphicsView->pts);
-                double AreaActual=AreaPix*pow(this->resolution,2);
+        auto [newImage,AreaPix] =Tools::PaintPoly(rightImage.toImage(),\
+                ui->rightGraphicsView->pts,\
+                this->curReslution,\
+                &this->painter);
+//                double AreaActual=AreaPix*pow(this->curReslution,2);
                 rightImage.convertFromImage(newImage);
                 updateRightImage(rightImage);
-                if(AreaActual==0){
+                if(AreaPix==0){
             //没有进行过标定
             QMessageBox::information(this, "计算得到的实际面积（um²）",
                                      "请先进行标定", QMessageBox::Ok);
         }
         else{
             QMessageBox::information(this, "计算得到的实际面积（um²）",
-                                     QString::number(AreaActual) + "(um²)", QMessageBox::Ok);
+                                     QString::number(AreaPix) + "(um²)", QMessageBox::Ok);
         }
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+        setDrawActionStatus(true);
     }
     else{
         ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
         return;
     }
 
+}
+/********************************************************
+ *                     三点角度
+ * ******************************************************/
+
+void  MainWindow::on_action3ptsMsAngle_triggered(){
+
+    ///初始化结果输出
+    if(ui->rightGraphicsView->figureChosed==GraphicsView::figure::POINT){
+        setDrawActionStatus(false);
+//        this->ImgTmp=this->rightPixmapItem->pixmap().toImage().copy();
+        this->ImgDqe.push(this->rightPixmapItem->pixmap().toImage());
+
+
+
+        ui->rightGraphicsView->pts.clear();
+        ui->rightGraphicsView->figureChosed=GraphicsView::figure::PTS3MSAGL;
+    }
+    else if((ui->rightGraphicsView->figureChosed==GraphicsView::figure::PTS3MSAGL) && \
+            (ui->rightGraphicsView->pts.size()==3)){
+        QPixmap rightImage = rightPixmapItem->pixmap();
+        auto[newImage,angle]  =Tools::PaintAngle(rightImage.toImage(),\
+                ui->rightGraphicsView->pts,
+                &this->painter);
+                rightImage.convertFromImage(newImage);
+                updateRightImage(rightImage);
+
+                QMessageBox::information(this, "计算得到的实际角度（deg）",\
+                QString::number(angle) + QString("(°)"), QMessageBox::Ok);
+
+                ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+                setDrawActionStatus(true);
+    }
+                else{
+            ui->rightGraphicsView->figureChosed=GraphicsView::figure::POINT;
+            return;
+        }
+    }
+
+
+
+    /*************************************************************
+     *                      海康相机链接操作
+     * **************************************************************/
+
+    /*
+    ///ip连接
+    void MainWindow::on_actionconnect_triggered(){
+
+        ///获取两个ip设置成默认值
+        ///
+        /// todo
+
+
+        ///枚举，选择相机[0]，将获取参数导入到成员变量
+        do{
+            MV_CC_DEVICE_INFO_LIST stDeviceList;
+            memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+            this->nRet=MV_CC_EnumDevices(MV_CAMERALINK_DEVICE, &stDeviceList);
+
+            ////本函数只使用于工控机一拖一相机，其他情况需要重写
+            ///枚举相机失败 或者没有相机
+            HKcamConnectDlg dialog;
+            if(MV_OK!=this->nRet or stDeviceList.nDeviceNum<=0){
+                QMessageBox::warning(this,"警告","未找到相机", QMessageBox::Ok);
+                break;
+            }
+            ///成功枚举相机
+
+                ///获取相机信息
+                this->stDevInfo=stDeviceList.pDeviceInfo[0];
+                dialog.init(QVector<uint32_t>{1,2,3,4},QVector<uint32_t>{1,2,3,4});
+
+
+
+
+            //        HKcamConnectDlg dialog;
+            connect(&dialog,&HKcamConnectDlg::sendData,this,[this]\
+                    (unsigned int x1,unsigned int x2,unsigned int x3,unsigned int x4,\
+                    unsigned int y1,unsigned int y2,unsigned int y3,unsigned int y4){
+                uint16_t deviceIp = (x1<<24)|(x2<<16)|(x3<<8)|x4;
+                uint16_t pcIp = (y1<<24)|(y2<<16)|(y3<<8)|y4;
+                this->stGigEDev->nCurrentIp = deviceIp;
+                this->stGigEDev->nNetExport = pcIp;
+
+                ///GigE camera only
+                this->stDevInfo->nTLayerType = MV_GIGE_DEVICE;// Only support GigE camera
+
+                this->stDevInfo->SpecialInfo.stGigEInfo = *this->stGigEDev;
+
+            });
+            dialog.exec();
+        }while (0);
+
+    }
+
+    */
+
+
+    ///打开相机
+    void MainWindow::on_actionopenDevice_triggered(){
+        do
+        {
+            setHKcamActionStatus(false);
+            ///如果相机只是暂停了，并没有关闭
+            ///
+            if((this->HkHandle!=nullptr)&&(this->hkStopFlg==true)){
+                on_actionstopGrab_triggered();
+                break;
+            }
+
+
+            MV_CC_DEVICE_INFO_LIST stDeviceList;
+            //如果相机在链接中，直接跳出
+            if(this->hkStopFlg==FALSE){
+                QMessageBox::warning(this,"警告","请先停止相机"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+            this->nRet=MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
+
+            ////本函数只使用于工控机一拖一相机，其他情况需要重写
+            ///枚举相机失败 或者没有相机
+            if((MV_OK!=this->nRet)||(stDeviceList.nDeviceNum<=0) ){
+                QMessageBox::warning(this,"警告",QString("找到%1相机,枚举失败"+QString::number(this->nRet)).arg(stDeviceList.nDeviceNum), QMessageBox::Ok);
+                break;
+            }
+            ///成功枚举相机
+            ///获取相机信息
+            this->stDevInfo=stDeviceList.pDeviceInfo[0];
+            // Select device and create handle
+            ///创建相机句柄
+
+            this->nRet = MV_CC_CreateHandle(&this->HkHandle,this->stDevInfo);
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","相机句柄创建失败"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            // Open device
+            ///打开相机
+            this->nRet = MV_CC_OpenDevice(this->HkHandle);
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","相机打开失败"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            ///相机已开启
+            this->hkStopFlg=false;
+            ///
+            /// Detection network optimal package size(It only works for the GigE camera)
+            ///如果是GigE camera
+            if (this->stDevInfo->nTLayerType == MV_GIGE_DEVICE)
+            {
+                int nPacketSize = MV_CC_GetOptimalPacketSize(this->HkHandle);
+                if (nPacketSize > 0)
+                {
+                    this->nRet = MV_CC_SetIntValue(this->HkHandle,"GevSCPSPacketSize",nPacketSize);
+                    if(this->nRet != MV_OK)
+                    {
+                        QMessageBox::warning(this,"警告",\
+                                             "Warning: Set Packet Size fail nRet"+\
+                                             QString::number(this->nRet), QMessageBox::Ok);
+
+                    }
+                }
+                else
+                {
+                    QMessageBox::warning(this,"警告","Get Packet Size fail nRet"+\
+                                         QString::number(nPacketSize), QMessageBox::Ok);
+
+                }
+            }
+
+            // Set trigger mode as off
+            ///更改触发模式为自由触发
+
+            this->nRet = MV_CC_SetEnumValue(this->HkHandle, "TriggerMode", MV_TRIGGER_MODE_OFF);
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","Set Trigger Mode fail! nRet"+\
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            ///获取相机图像类型
+            this->nRet =MV_CC_GetEnumValue(this->HkHandle,"PixelFormat",this->HKImgFmt.get());
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","get Pixel Format fail! nRet"+\
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            ///获取相机的自动状态 ：曝光、增益、白平衡
+            ///
+            //            memset(this->exposureMode,0,sizeof (MVCC_ENUMVALUE));
+            this->nRet=MV_CC_GetEnumValue(this->HkHandle,"ExposureAuto", this->exposureMode.get());
+            if(MV_OK!=this->nRet)
+            {
+                QMessageBox::warning(this,"警告","Get exposure Mode fail! nRet"+ \
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            //            memset(this->gainMode,0,sizeof (MVCC_ENUMVALUE));
+            this->nRet=MV_CC_GetEnumValue(this->HkHandle,"GainAuto", this->gainMode.get());
+
+            if(MV_OK!=this->nRet){
+                QMessageBox::warning(this,"警告","Get Gain Mode fail! nRet"+ \
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            //            memset(this->balanceWH,0,sizeof (MVCC_ENUMVALUE));
+            this->nRet=MV_CC_GetEnumValue(this->HkHandle,"BalanceWhiteAuto", this->balanceWH.get());
+
+            if(MV_OK!=this->nRet){
+                QMessageBox::warning(this,"警告","Get exposure Mode fail! nRet"+ \
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+
+            ///清空图像窗口
+            if (this->size)
+            {
+                delete this->size;
+                this->size = new QLabel;
+                ui->statusBar->addPermanentWidget(this->size);
+            }
+            this->setWindowTitle(WINDOW_TITLE);
+            setActionStatus(false);
+
+
+
+
+            // Start grab image
+            this->nRet = MV_CC_StartGrabbing(this->HkHandle);
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","Start Grabbing fail! nRet"+\
+                                     QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            this->grabImgThread =new TgrabImg(this,this->HkHandle,this->HKImgFmt);
+            connect(this->grabImgThread,&TgrabImg::newImageCaptured,this,&MainWindow::updateLeftFromCam);
+            this->grabImgThread->startCapturing();
+        }while(0);
+        setHKcamActionStatus(true);
+    }
+
+    ///刷新左边图像的函数
+    void MainWindow::updateLeftFromCam(QImage image,const QString& str)
+    {
+        if(str!="成功取图"){
+            QMessageBox::warning(this, "错误", str, QMessageBox::Ok);
+            this->hkStopFlg=true;
+            this->nRet =MV_CC_StopGrabbing(this->HkHandle);
+
+            return; // 如果有错误，不处理图像
+        }
+
+        QPixmap leftImage = QPixmap::fromImage(image);
+        leftPixmapItem = leftScene->addPixmap(leftImage);
+        leftScene->setSceneRect(QRectF(leftImage.rect()));
+
+
+        this->setWindowTitle( "HIKVISION - ImageQt");
+
+        setActionStatus(true);
+
+        size->setText(QString::number(leftPixmapItem->pixmap().width())
+                      + " x " + QString::number(leftPixmapItem->pixmap().height()));
+        ///显示当前分辨率的名字
+
+
+        QString name;
+        if(curReslution!=0.0){
+            std::for_each(this->resolution->begin(),this->resolution->end(),[this,&name](std::pair<QString,double> resolutionEle){
+                if(resolutionEle.second==curReslution){
+                    name=resolutionEle.first;
+                }
+            });
+        }
+        this->curResolutionName.get()->setText("当前标定命名："+name);
+}
+    /*
+          * cameraThread = new CameraThread(this->HkHandle);
+            connect(cameraThread, &CameraThread::newImageCaptured, this, &MainWindow::updateGraphicsView);
+            cameraThread->startCapturing();
+        }
+        */
+    /*
+            ///线程ID
+            unsigned int nThreadID = 0;
+            ///线程handle
+            ///
+
+            void* hThreadHandle = (void*) _beginthreadex( NULL , 0 , [](void* pUser){
+                MainWindow* pMainWindow = static_cast<MainWindow*>(pUser);
+                return pMainWindow->WorkThread(pUser);
+            }
+            , this->HkHandle, 0 , &nThreadID );
+            if (NULL == hThreadHandle)
+            {
+                break;
+            }
+
+
+*/
+
+
+
+    /*
+
+    //__stdcall
+inline static unsigned int __stdcall WorkThread(void* pUser)
+    {
+        while(true)
+        {
+            this->nRet = MV_CC_GetImageBuffer(pUser, this->stOutFrame, 1000);
+            ///成功取图
+            if (this->nRet == MV_OK)
+            {
+                qDebug("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",\
+                       this->stOutFrame->stFrameInfo.nWidth,\
+                       this->stOutFrame->stFrameInfo.nHeight, \
+                       this->stOutFrame->stFrameInfo.nFrameNum);
+                //                printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
+                //                    this->stOutFrame->stFrameInfo.nWidth, this->stOutFrame->stFrameInfo.nHeight, this->stOutFrame->stFrameInfo.nFrameNum);
+
+                ///拿图像，发信号
+                QImage image(this->stOutFrame->pBufAddr,\
+                             this->stOutFrame->stFrameInfo.nWidth,\
+                             this->stOutFrame->stFrameInfo.nHeight,\
+                             QImage::Format::Format_Mono);
+
+                updateLeftFromCam(image);
+                this->nRet = MV_CC_FreeImageBuffer(pUser, this->stOutFrame);
+                if(nRet != MV_OK)
+                {
+                    QMessageBox::warning(this,"警告","释放相机图像缓存失败 nRet"+QString::number(this->nRet), QMessageBox::Ok);
+                }
+            }
+            ///取图失败
+            else
+            {
+                QMessageBox::warning(this,"警告","取图失败 nRet"+QString::number(this->nRet), QMessageBox::Ok);
+
+            }
+            if(this->hkStopFlg)
+            {
+                break;
+            }
+        }
+
+        return 0;
+    }
+
+*/
+
+
+
+
+
+    ///相机暂停
+    ///
+    void MainWindow::on_actionstopGrab_triggered(){
+        ///相机在运行中
+        if((this->hkStopFlg==false)&&(this->HkHandle!=nullptr))
+        {
+            freeTgrabImg();
+            this->hkStopFlg=true;
+            this->nRet =MV_CC_StopGrabbing(this->HkHandle);
+            if(MV_OK!=this->nRet){
+                QMessageBox::warning(this,"警告","相机暂停失败"+QString::number(this->nRet), QMessageBox::Ok);
+            }
+            else{
+                this->hkStopFlg=true;
+            }
+        }
+        ///相机暂停
+        else if ((this->hkStopFlg==true) &&(this->HkHandle!=nullptr)){
+            // Start grab image
+            this->nRet = MV_CC_StartGrabbing(this->HkHandle);
+            if (MV_OK != this->nRet)
+            {
+                QMessageBox::warning(this,"警告","Start Grabbing fail! nRet"+\
+                                     QString::number(this->nRet), QMessageBox::Ok);
+            }
+            else{
+                this->hkStopFlg=false;
+
+            }
+            this->grabImgThread =new TgrabImg(this,this->HkHandle,this->HKImgFmt);
+            connect(this->grabImgThread,&TgrabImg::newImageCaptured,this,&MainWindow::updateLeftFromCam);
+            this->grabImgThread->startCapturing();
+
+
+        }
+        else{
+            QMessageBox::warning(this,"警告","请先打开相机", QMessageBox::Ok);
+
+        }
+    }
+
+
+    ///相机停止
+    ///
+    void MainWindow::on_actiondisconnect_triggered(){
+        do{
+            /*
+            freeTgrabImg();
+            this->hkStopFlg=true;
+            this->nRet =MV_CC_StopGrabbing(this->HkHandle);
+            if(MV_OK!=this->nRet)
+                QMessageBox::warning(this,"警告","相机暂停失败"+QString::number(this->nRet), QMessageBox::Ok);
+                */
+
+            ///如果相机没有打开
+            if((this->nRet!=MV_OK) && (this->HkHandle==nullptr)){
+                QMessageBox::warning(this,"警告","请先打开相机"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            ///相机打开则暂停
+            if(this->hkStopFlg==false){
+                on_actionstopGrab_triggered();
+            }
+            ///关闭相机
+            this->nRet=MV_CC_CloseDevice(this->HkHandle);
+            if(MV_OK!=this->nRet)
+            {
+                QMessageBox::warning(this,"警告","相机停止失败"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            ///释放 handle
+            this->nRet =MV_CC_DestroyHandle(this->HkHandle);
+            if(MV_OK!=this->nRet){
+                QMessageBox::warning(this,"警告","相机句柄释放失败"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            this->HkHandle=nullptr;
+        }while (0);
+
+        if (this->nRet != MV_OK)
+        {
+            if (this->HkHandle != nullptr)
+            {
+                MV_CC_DestroyHandle(this->HkHandle);
+                this->HkHandle = nullptr;
+            }
+        }
+    }
+
+    ///设置白平衡和曝光界面弹出
+    void MainWindow::on_actionsetSpecInfo_triggered(){
+        do{
+
+            ///如果相机没有打开
+            if((this->nRet!=MV_OK) && (this->HkHandle==nullptr)){
+                QMessageBox::warning(this,"警告","请先打开相机"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            ///相机打开则暂停
+            if(this->hkStopFlg==false){
+                on_actionstopGrab_triggered();
+            }
+
+
+
+            ///获取白平衡和曝光
+            /// MV_CC_FRAME_SPEC_INFO::fExposureTime
+            /// MV_CC_FRAME_SPEC_INFO::fGain
+            /// MV_CC_FRAME_SPEC_INFO::nRed nGreen nBlue
+
+
+
+//            std::unique_ptr<MVCC_FLOATVALUE> fexposure=std::make_unique<MVCC_FLOATVALUE>();
+//            std::unique_ptr<MVCC_FLOATVALUE> fgain=std::make_unique<MVCC_FLOATVALUE>();
+
+            MVCC_FLOATVALUE* fexposure=new MVCC_FLOATVALUE();
+            MVCC_FLOATVALUE* fgain= new MVCC_FLOATVALUE();
+            MVCC_INTVALUE* nred =new MVCC_INTVALUE();
+            MVCC_INTVALUE* ngreen =new MVCC_INTVALUE();
+            MVCC_INTVALUE* nblue =new MVCC_INTVALUE();
+
+
+
+            ///设置到默认对话框上
+
+            if(MV_OK!=MV_CC_GetExposureTime(this->HkHandle,fexposure)){
+                QMessageBox::warning(this,"警告","设置曝光时间错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            if(MV_OK!=MV_CC_GetGain(this->HkHandle,fgain)){
+                QMessageBox::warning(this,"警告","设置增益错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            if(MV_OK!=MV_CC_GetBalanceRatioRed(this->HkHandle,nred)){
+                QMessageBox::warning(this,"警告","设置白平衡红色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            if(MV_OK!=MV_CC_GetBalanceRatioGreen(this->HkHandle,ngreen)){
+                QMessageBox::warning(this,"警告","设置白平衡绿色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            if(MV_OK!=MV_CC_GetBalanceRatioBlue(this->HkHandle,nblue)){
+                QMessageBox::warning(this,"警告","设置白平衡蓝色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            SetHKSpecInfoDlg dlg;
+            dlg.init(fexposure->fCurValue,fgain->fCurValue,nred->nCurValue,ngreen->nCurValue,nblue->nCurValue,\
+                     bool(this->exposureMode.get()->nCurValue!=MV_EXPOSURE_AUTO_MODE_OFF),\
+                     bool(this->gainMode.get()->nCurValue!=MV_GAIN_MODE_OFF),\
+                     bool(this->balanceWH.get()->nCurValue!=MV_BALANCEWHITE_AUTO_OFF));
+
+            ///将重新设置的参数设置到相机上
+            connect(&dlg,&SetHKSpecInfoDlg::sendData,this,&MainWindow::setPara2Cam);
+            //            connect(&dlg,&SetHKSpecInfoDlg::pb_getAutoBWH,this,&MainWindow::getPara2Dlg)
+            dlg.exec();
+
+            ///继续
+            if(this->hkStopFlg==true){
+                on_actionstopGrab_triggered();
+            }
+
+        }while (0);
+
+    }
+
+    ///将参数设置到相机
+    void MainWindow::setPara2Cam(float fexposure,float fgain,unsigned int nred,unsigned int ngreen,unsigned int nblue,\
+                                 bool exposureMode,bool gainMode,bool balanceMode){
+
+        do{
+            if( exposureMode?false:MV_OK!=MV_CC_SetExposureTime(this->HkHandle,fexposure)){
+                QMessageBox::warning(this,"警告","设置曝光时间错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            this->exposureMode.get()->nCurValue=exposureMode?MV_EXPOSURE_AUTO_MODE_OFF:MV_EXPOSURE_AUTO_MODE_CONTINUOUS;
+            if(gainMode?false:MV_OK!=MV_CC_SetGain(this->HkHandle,fgain)){
+                QMessageBox::warning(this,"警告","设置增益错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            this->gainMode.get()->nCurValue=gainMode?MV_GAIN_MODE_OFF:MV_GAIN_MODE_CONTINUOUS;
+            if(balanceMode?false:MV_OK!=MV_CC_SetBalanceRatioRed(this->HkHandle,nred)){
+                QMessageBox::warning(this,"警告","设置白平衡红色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            if(balanceMode?false:MV_OK!=MV_CC_SetBalanceRatioGreen(this->HkHandle,ngreen)){
+                QMessageBox::warning(this,"警告","设置白平衡绿色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+
+            if(balanceMode?false:MV_OK!=MV_CC_SetBalanceRatioBlue(this->HkHandle,nblue)){
+                QMessageBox::warning(this,"警告","设置白平衡蓝色错误"+QString::number(this->nRet), QMessageBox::Ok);
+                break;
+            }
+            this->balanceWH.get()->nCurValue=balanceMode?MV_BALANCEWHITE_AUTO_OFF:MV_BALANCEWHITE_AUTO_CONTINUOUS;
+        }while (0);
+    }
+
+    //    void MainWindow::getPara2Dlg(){
+    //        do{
+
+    //            MVCC_ENUMVALUE* EMAutoBWH=nullptr;
+    //            if(MV_OK!=MV_CC_GetBalanceWhiteAuto(this->HkHandle,EMAutoBWH)){
+    //                QMessageBox::warning(this,"警告","自动获取白平衡错误", QMessageBox::Ok);
+    //                break;
+    //            }
+
+    // //            if(MV_OK!=MV_CC_SetBalanceRatioGreen(this->HkHandle,ngreen)){
+    // //                QMessageBox::warning(this,"警告","设置白平衡绿色错误", QMessageBox::Ok);
+    // //                break;
+    // //            }
+
+    // //            if(MV_OK!=MV_CC_SetBalanceRatioBlue(this->HkHandle,nblue)){
+    // //                QMessageBox::warning(this,"警告","设置白平衡蓝色错误", QMessageBox::Ok);
+    // //                break;
+    //            }
+    //        }while (0);
+    //    }
+
+
+    ///将左边的图像捕获到右侧
+    ///dzy1025
+    void MainWindow::on_actioncapture_triggered(){
+
+        if(leftPixmapItem==nullptr){
+            return;
+        }
+        QPixmap leftPix = leftPixmapItem->pixmap();
+
+        rightPixmapItem->setPixmap(leftPix);
+        rightScene->setSceneRect(QRectF(leftPix.rect()));
+        this->ImgDqe.clear();
+    }
+    void  MainWindow::freeTgrabImg(){
+        if(this->grabImgThread!=nullptr){
+            grabImgThread->stopCapturing(); // 要求线程停止抓取
+            delete grabImgThread;
+            grabImgThread =nullptr;
+        }
+    }
+
+void MainWindow::on_actionresolutionManage_triggered()
+{
+
+    ResolutionManagerDlg dlg(this,this->resolution.get(),&this->curReslution);
+    connect(&dlg, &ResolutionManagerDlg::sendData,[this](double res){
+        this->curReslution=res;
+    });
+    dlg.exec();
+
+    QString name;
+    if(curReslution!=0.0){
+        std::for_each(this->resolution->begin(),this->resolution->end(),[this,&name](std::pair<QString,double> resolutionEle){
+            if(resolutionEle.second==curReslution){
+                name=resolutionEle.first;
+            }
+        });
+    }
+    this->curResolutionName.get()->setText("当前标定命名："+name);
+
+}
+
+void MainWindow::on_actionpicBefore_triggered()
+{
+    if(this->savedImage.getImageCount()==0){
+        return;
+    }
+    ///更新图像
+    QPixmap rightPixmap =QPixmap::fromImage(this->savedImage.getImage(this->savedShowIdx));
+    updateRightImage(rightPixmap);
+    ///更新名称
+    this->setWindowTitle(this->savedImage.getImageName(this->savedShowIdx) + " - ImageQt");
+
+    if(this->savedShowIdx!=0){
+        this->savedShowIdx--;
+    }
+}
+
+void MainWindow::on_actionpicNext_triggered()
+{
+    if(this->savedImage.getImageCount()==0){
+        return;
+    }
+
+    if(this->savedShowIdx!=savedImage.getImageCount()-1){
+        this->savedShowIdx++;
+    }
+    QPixmap rightPixmap =QPixmap::fromImage(this->savedImage.getImage(this->savedShowIdx));
+    updateRightImage(rightPixmap);
+}
+
+
+
+void MainWindow::on_actionimageLeap_triggered()
+{
+    ImgLeapDlg dlg(this,&savedImage);
+    connect(&dlg, &ImgLeapDlg::sendData,[this](QString str){
+        QPixmap rightPixmap =QPixmap::fromImage(this->savedImage.getImageInfoByName(str).savedImg);
+        updateRightImage(rightPixmap);
+    });
+    dlg.exec();
+}
+
+
+
+void MainWindow::on_actioneraserLast_triggered()
+{
+    /*
+    if(this->ImgTmp.isNull()){
+        return;
+    }
+    QPixmap pixmalTmp =QPixmap::fromImage(this->ImgTmp);
+    this->rightPixmapItem->setPixmap(pixmalTmp);
+    updateRightImage(pixmalTmp);
+    */
+    if(this->ImgDqe.isEmpty()){
+        return;
+    }
+
+    QPixmap pixmalTmp =QPixmap::fromImage(this->ImgDqe.peek().copy());
+    this->rightPixmapItem->setPixmap(pixmalTmp);
+    updateRightImage(pixmalTmp);
+    this->ImgDqe.pop_back();
 }

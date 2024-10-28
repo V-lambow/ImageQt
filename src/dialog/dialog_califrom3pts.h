@@ -19,7 +19,7 @@ public:
 private:
     Ui::CaliFrom3PtsDlg *ui;
 signals:
-    void sendData(double);
+    void sendData(QString ,double);
 private slots:
     void on_buttonBox_accepted();
 

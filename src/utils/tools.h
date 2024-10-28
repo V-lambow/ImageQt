@@ -10,7 +10,6 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QDebug>
-#include <QPainter>
 #include <QtMath>
 #include "gaussianblur.h"
 #include <QMessageBox>
@@ -53,14 +52,20 @@ QImage Thinning(const QImage &origin);
 //QImage RGB2HSL(const QImage &origin);
 //QImage RGB2CMYK(const QImage &origin);
 QImage Final(const QImage &origin);
-std::tuple<QImage,double> PaintLine(const QImage &origin,QLineF line,QPen pen=QPen(Qt::red, 2));
-std::tuple<QImage,double> PaintLineAPt(const QImage &origin,QLineF line,QPointF pt,QPen pen=QPen(Qt::red, 2));
+
 QPointF midPoint(const QPointF &pt1,const QPointF &pt2);
 QPointF midPoint(const QPoint &pt1,const QPoint &pt2);
-std::tuple<QImage,int>  PaintRect1(const QImage &origin,QPointF ptbg,QPointF ptend,QPen pen=QPen(Qt::red, 2));
-std::tuple<QImage,int> PaintRect2(const QImage &origin,QPointF ptbg,QPointF ptend,QPen pen=QPen(Qt::red, 2));
-std::tuple<QImage,double> PaintPoly(const QImage &origin,const QVector<QPointF>pts,QPen pen=QPen(Qt::red, 2));
+
+std::tuple<QImage,double> PaintLine(const QImage &origin,QLineF line,const double& reslouton,QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
+std::tuple<QImage,double> PaintLineAPt(const QImage &origin,QLineF line,QPointF pt,const double& reslouton,QString str="",QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
+
+std::tuple<QImage,double>  PaintRect1(const QImage &origin,QPointF ptbg,QPointF ptend,const double& reslouton,QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
+std::tuple<QImage,int> PaintRect2(const QImage &origin,QPointF ptbg,QPointF ptend,const double& reslouton,QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
+std::tuple<QImage,double> PaintPoly(const QImage &origin,const QVector<QPointF>pts,const double& reslouton,QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
 double calculatePolygonArea(const QVector<QPointF> &points);
+double pts3toAngle(const QVector<QPointF>& points);
+std::tuple<QImage,double>PaintAngle(const QImage &origin,const QVector<QPointF>pts,QPainter* Painter =nullptr,QPen pen=QPen(Qt::red, 1));
+
 }
 
 

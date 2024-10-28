@@ -15,5 +15,5 @@ CaliFrom3PtsDlg::~CaliFrom3PtsDlg()
 }
 void CaliFrom3PtsDlg::on_buttonBox_accepted()
 {
-    emit sendData(ui->x->value());
+    emit sendData(ui->name->text(),ui->x->value());
 }

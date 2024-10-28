@@ -28,6 +28,19 @@
         <file>open.svg</file>
         <file>clear.svg</file>
         <file>about.svg</file>
+        <file>oldtimecamera.ico</file>
+        <file>player-pause.icon.jpg</file>
+        <file>stop-fill.svg</file>
+        <file>NotoV1VideoCamera.svg</file>
+        <file>MdiImageMove.svg</file>
+        <file>CarbonContainerImagePull.svg</file>
+        <file>CarbonContainerImagePush.svg</file>
+        <file>LucideImageDown.svg</file>
+        <file>LucideImageUp.svg</file>
+        <file>UilImageRedo.svg</file>
+        <file>IconoirLineSpace.svg</file>
+        <file>PhLineSegmentLight.svg</file>
+        <file>PhLineSegmentsLight.svg</file>
     </qresource>
     <qresource prefix="/language">
         <file>cn.qm</file>
