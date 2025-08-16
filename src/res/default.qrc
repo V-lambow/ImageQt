@@ -1,0 +1,48 @@
+<RCC>
+    <qresource prefix="/img">
+        <file>frame_3.png</file>
+        <file>frame_1.png</file>
+        <file>frame_2.png</file>
+        <file>logo_1.png</file>
+        <file>logo_2.png</file>
+        <file>metal.png</file>
+        <file>chinese.png</file>
+        <file>english.png</file>
+        <file>right.png</file>
+        <file>horizontal.png</file>
+        <file>vertical.png</file>
+        <file>left.png</file>
+        <file>restore.png</file>
+        <file>histogram.png</file>
+        <file>brightness.svg</file>
+        <file>save.svg</file>
+        <file>zoom.png</file>
+        <file>lineGrey.gif</file>
+        <file>quill_72px.png</file>
+        <file>log.png</file>
+        <file>fun_exp.png</file>
+        <file>line_graphic_72p.png</file>
+        <file>Line_Chart_72px.png</file>
+        <file>temperature_72px.png</file>
+        <file>blur_on_72px.png</file>
+        <file>open.svg</file>
+        <file>clear.svg</file>
+        <file>about.svg</file>
+        <file>oldtimecamera.ico</file>
+        <file>player-pause.icon.jpg</file>
+        <file>stop-fill.svg</file>
+        <file>NotoV1VideoCamera.svg</file>
+        <file>MdiImageMove.svg</file>
+        <file>CarbonContainerImagePull.svg</file>
+        <file>CarbonContainerImagePush.svg</file>
+        <file>LucideImageDown.svg</file>
+        <file>LucideImageUp.svg</file>
+        <file>UilImageRedo.svg</file>
+        <file>IconoirLineSpace.svg</file>
+        <file>PhLineSegmentLight.svg</file>
+        <file>PhLineSegmentsLight.svg</file>
+    </qresource>
+    <qresource prefix="/language">
+        <file>cn.qm</file>
+    </qresource>
+</RCC>
